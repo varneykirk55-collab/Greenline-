@@ -1,0 +1,1143 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#2b241f"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style></head><body>
+<title>Green Empire Tycoon</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;800;900&display=swap">
+<style>
+/* Layout: the illustrated scene IS the screen (full-bleed, drag to pan). A thin floating HUD and
+   contextual sheets sit on top. Single warm look taken from the art, so no dark-theme variant. */
+:root{
+  --ink:#22170f; --paper:#fffaf0; --paper-2:#f6ecd9; --muted:#7d6a56;
+  --leaf:#5bb05a; --leaf-dk:#2f7a3a; --neon:#3ee65c; --gold:#ffc84a; --gold-dk:#a86f0c; --danger:#d9533a;
+  --f-display:"Lilita One","Arial Rounded MT Bold","Trebuchet MS",sans-serif;
+  --f-body:"Nunito","Segoe UI",system-ui,sans-serif;
+  --top:env(safe-area-inset-top,0px); --bot:env(safe-area-inset-bottom,0px);
+  --cash:var(--gold-dk);
+  color-scheme:light;
+}
+html,body{height:100%}
+body{background:#2b241f;color:var(--ink);font-family:var(--f-body);font-weight:700;font-size:15px;overflow:hidden;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--neon);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+/* World: full-screen, scrollable both ways, scrollbars hidden */
+#world{position:fixed;inset:0;overflow:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;background:#2b241f url(assets/backdrop.webp) center/cover no-repeat}
+#world::-webkit-scrollbar{display:none}
+#world.room{background-image:url(assets/backdrop.webp)}
+#world.room::before{content:"";position:fixed;inset:0;background:radial-gradient(ellipse at center,rgba(255,226,170,.18),rgba(30,20,12,.45));pointer-events:none}
+#stage{position:absolute;left:0;top:0}
+#stage > img.bg{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;-webkit-user-drag:none}
+#world.room #stage > img.bg{filter:drop-shadow(0 18px 24px rgba(0,0,0,.45))}
+#layer{position:absolute;inset:0}
+.hit{position:absolute;background:transparent;border:0;padding:0;border-radius:12px}
+.hit:focus-visible{outline:3px solid var(--neon)}
+
+/* Building / action pins */
+.pin{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:0;background:none;border:0;padding:0;filter:drop-shadow(0 3px 0 rgba(34,23,15,.9));z-index:2}
+.pin .tag{display:flex;align-items:center;gap:6px;background:var(--paper);border:2.5px solid var(--ink);border-radius:999px;padding:4px 11px 4px 6px;white-space:nowrap}
+.pin .ic{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;border:2px solid var(--ink);background:var(--leaf);color:#fff;font-size:13px;flex:none}
+.pin b{font-family:var(--f-display);font-weight:400;font-size:15px;line-height:1}
+.pin small{display:block;font-size:11px;line-height:1.1;color:var(--muted);font-weight:900}
+.pin .stem{width:3px;height:12px;background:var(--ink)}
+.pin.sale .tag{background:var(--gold)} .pin.sale small{color:var(--ink)}
+.pin.lock .tag{background:#efe6d6} .pin.lock .ic{background:#9c8f7c}
+.pin.action .tag{background:var(--leaf);color:#fff} .pin.action small{color:#eaffdf} .pin.action .ic{background:var(--paper);color:var(--leaf-dk)}
+.pin .badge{min-width:20px;height:20px;border-radius:10px;background:var(--gold);border:2px solid var(--ink);font-size:11px;display:grid;place-items:center;padding:0 4px;margin-left:2px;color:var(--ink)}
+.pin.bob{animation:bob 2.4s ease-in-out infinite}
+@keyframes bob{50%{transform:translate(-50%,calc(-100% - 4px))}}
+
+/* Plants on the beds */
+.plant{position:absolute;transform:translate(-50%,-100%);pointer-events:none;-webkit-user-drag:none;transition:width .4s}
+.plant.ready{filter:drop-shadow(0 0 6px rgba(255,214,90,.95)) drop-shadow(0 0 2px rgba(255,214,90,.9));animation:ripe 1.4s ease-in-out infinite}
+@keyframes ripe{50%{filter:drop-shadow(0 0 12px rgba(255,214,90,1)) drop-shadow(0 0 3px rgba(255,214,90,1))}}
+.cell{position:absolute;transform:translate(-50%,-50%);border:0;background:none;padding:0}
+.chip{position:absolute;transform:translate(-50%,0);background:rgba(255,250,240,.95);border:2px solid var(--ink);border-radius:8px;padding:1px 6px 2px;font-size:10.5px;font-weight:900;white-space:nowrap;pointer-events:none;z-index:1}
+.chip i{display:block;height:3px;border-radius:2px;background:#e3d8c4;margin-top:1px;overflow:hidden}
+.chip i b{display:block;height:100%;background:#2fd24e}
+.chip.gold{background:var(--gold)}
+.plus{position:absolute;transform:translate(-50%,-50%);width:28px;height:28px;border-radius:50%;background:rgba(91,176,90,.92);border:2.5px solid var(--ink);color:#fff;font-family:var(--f-display);font-size:20px;line-height:22px;text-align:center;pointer-events:none;box-shadow:0 2px 0 var(--ink)}
+
+/* Customer speech bubbles */
+.bubble{position:absolute;transform:translate(-50%,-100%);background:var(--paper);border:2.5px solid var(--ink);border-radius:14px;padding:4px 10px;font-size:12px;font-weight:900;white-space:nowrap;box-shadow:0 3px 0 var(--ink);animation:pop .3s ease-out;z-index:2}
+.bubble::after{content:"";position:absolute;left:50%;bottom:-9px;width:12px;height:12px;background:var(--paper);border-right:2.5px solid var(--ink);border-bottom:2.5px solid var(--ink);transform:translateX(-50%) rotate(45deg)}
+.bubble b{display:block;font-family:var(--f-display);font-weight:400;font-size:14px}
+.bubble.indica{background:#e6dcff}.bubble.indica::after{background:#e6dcff}
+.bubble.sativa{background:#fff0c9}.bubble.sativa::after{background:#fff0c9}
+.bubble.hybrid{background:#dcf5dc}.bubble.hybrid::after{background:#dcf5dc}
+@keyframes pop{from{transform:translate(-50%,-80%) scale(.6);opacity:0}}
+
+/* Floating HUD */
+.hud{position:fixed;left:0;right:0;top:0;padding-top:calc(var(--top) + 8px);padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px));display:flex;align-items:flex-start;gap:6px;pointer-events:none;z-index:20}
+.hud > *{pointer-events:auto}
+.money{display:flex;flex-direction:column;gap:4px}
+.pill{display:inline-flex;align-items:center;gap:5px;background:var(--paper);border:2.5px solid var(--ink);border-radius:999px;padding:3px 11px 3px 4px;font-weight:900;font-size:15px;box-shadow:0 3px 0 var(--ink);white-space:nowrap}
+.pill .coin{width:20px;height:20px;border-radius:50%;background:var(--gold);border:2px solid var(--ink);display:grid;place-items:center;font-size:11px}
+.pill.sm{font-size:12px;padding:2px 9px 2px 4px;box-shadow:0 2px 0 var(--ink)}
+.pill.sm .coin{width:16px;height:16px;font-size:9px}
+.pill.debt{color:var(--danger)}
+.spacer{flex:1}
+.rbtn{width:42px;height:42px;border-radius:50%;border:2.5px solid var(--ink);background:var(--paper);display:grid;place-items:center;box-shadow:0 3px 0 var(--ink);position:relative;flex:none}
+.rbtn:active,.btn:active,.fab:active{transform:translateY(3px);box-shadow:0 0 0 var(--ink)}
+.rbtn .dot{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:9px;background:var(--gold);border:2px solid var(--ink);font-size:10px;display:grid;place-items:center;padding:0 3px}
+.rbtn .dot.new{background:var(--neon);animation:pulse 1.2s infinite}
+@keyframes pulse{50%{transform:scale(1.25)}}
+.bottom{position:fixed;left:0;right:0;bottom:0;padding-bottom:calc(var(--bot) + 12px);padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));display:flex;align-items:flex-end;gap:8px;pointer-events:none;z-index:20}
+.bottom > *{pointer-events:auto}
+.fab{border:2.5px solid var(--ink);border-radius:999px;padding:9px 16px;background:var(--paper);font-weight:900;font-size:15px;box-shadow:0 3px 0 var(--ink);display:inline-flex;align-items:center;gap:6px}
+.fab.go{background:var(--leaf);color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.3)}
+.where{font-family:var(--f-display);font-size:18px;color:#fff;text-shadow:0 2px 0 var(--ink),0 0 6px rgba(0,0,0,.6);margin-left:auto;align-self:center}
+
+/* Sheets (contextual popups) */
+.btn{border:2.5px solid var(--ink);border-radius:12px;padding:8px 14px;font-weight:900;background:#fff;color:var(--ink);box-shadow:0 3px 0 var(--ink)}
+.btn.go{background:var(--leaf);color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.35)}
+.btn.cash{background:var(--gold)} .btn.warn{background:var(--danger);color:#fff} .btn.ghost{background:var(--paper-2)}
+.btn.sm{padding:5px 10px;font-size:13px;border-radius:10px}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn.block{width:100%}
+.scrim{position:fixed;inset:0;background:rgba(34,23,15,.4);display:flex;align-items:flex-end;justify-content:center;z-index:40;padding-top:var(--top)}
+.sheet{width:100%;max-width:560px;max-height:84%;overflow-y:auto;background:var(--paper);border:3px solid var(--ink);border-bottom:none;border-radius:22px 22px 0 0;padding-block:14px calc(18px + var(--bot));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));animation:up .22s ease-out;user-select:text;-webkit-user-select:text}
+@keyframes up{from{transform:translateY(40px);opacity:.4}}
+.sheet h2{font-family:var(--f-display);font-weight:400;font-size:24px;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 10px}
+.stack{display:flex;flex-direction:column;gap:8px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.panel{background:var(--paper-2);border:2.5px solid var(--ink);border-radius:12px;padding:10px 12px}
+.label{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);font-weight:900}
+.art{border:2.5px solid var(--ink);border-radius:14px;overflow:hidden;margin-bottom:10px;background:url(assets/backdrop.webp) center/cover}
+.art img{display:block;width:100%;max-height:200px;object-fit:contain}
+.strain{display:flex;gap:10px;align-items:center;background:var(--paper-2);border:2.5px solid var(--ink);border-radius:12px;padding:8px 10px}
+.strain .meta{flex:1;min-width:0}
+.strain .meta b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.strain .meta small{color:var(--muted);font-size:12px}
+.tagp{display:inline-block;border:2px solid var(--ink);border-radius:999px;padding:0 7px;font-size:11px;font-weight:900;background:#fff}
+.tagp.indica{background:#cbb8ff}.tagp.sativa{background:#ffd88a}.tagp.hybrid{background:#b4ecbe}.tagp.fast{background:#bfe6f5}.tagp.heavy{background:#ffb99c}.tagp.sat{background:var(--danger);color:#fff}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.field input[type=text],.field textarea{background:#fff;color:var(--ink);border:2.5px solid var(--ink);border-radius:10px;padding:9px 10px;font:inherit;font-weight:800;width:100%;box-sizing:border-box}
+.field textarea{min-height:50px;resize:vertical}
+input[type=range]{width:100%;accent-color:var(--leaf)}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.seg button{border:2.5px solid var(--ink);border-radius:10px;padding:8px 4px;background:#fff;font-weight:900;font-size:13px}
+.seg button[aria-pressed="true"]{background:var(--leaf);color:#fff}
+.preview{display:flex;gap:12px;align-items:center;background:var(--paper-2);border-radius:12px;padding:10px;border:2.5px solid var(--ink);margin-bottom:12px}
+.preview dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:13px}
+.preview dt{color:var(--muted)} .preview dd{margin:0}
+.jars{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.jar{background:var(--paper-2);border:2.5px solid var(--ink);border-radius:12px;padding:8px;text-align:center;display:flex;flex-direction:column;gap:3px;align-items:center;min-width:0}
+.pkg{width:60px;height:68px;position:relative;flex:none}
+.pkg .lid{position:absolute;inset:0 5px auto;height:14px;background:var(--ink);border-radius:5px 5px 2px 2px}
+.pkg .body{position:absolute;inset:12px 0 0;border:2.5px solid var(--ink);border-radius:8px 8px 12px 12px;background:linear-gradient(90deg,rgba(255,255,255,.3),transparent 40%),#2f7a3a;display:grid;place-items:center}
+.pkg.edible .body{background:linear-gradient(90deg,rgba(255,255,255,.3),transparent 40%),#c25a8f;border-radius:8px}
+.pkg.conc .body{background:linear-gradient(90deg,rgba(255,255,255,.35),transparent 40%),#e0a52b;border-radius:16px}
+.pkg .lbl{background:var(--paper);border:2px solid var(--ink);border-radius:4px;font-family:var(--f-display);font-size:8.5px;line-height:1.05;padding:2px 3px;width:46px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jar b{font-size:13px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jar small{color:var(--muted);font-size:11px}
+.count{font-family:var(--f-display);font-size:17px;color:var(--gold-dk)}
+.contract{background:var(--paper-2);border:2.5px solid var(--ink);border-radius:12px;padding:10px 12px}
+.contract h3{font-family:var(--f-display);font-weight:400;font-size:17px;margin:0}
+.contract p{margin:4px 0 6px;font-size:13px}
+.contract .reward{font-size:13px;color:var(--leaf-dk);font-weight:900}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin:10px 0 14px}
+.day{border:2px solid var(--ink);border-radius:10px;background:#fff;text-align:center;padding:6px 2px;font-size:10px;line-height:1.2;min-width:0}
+.day b{display:block;font-family:var(--f-display);font-size:15px;font-weight:400}
+.day.done{background:var(--leaf);color:#fff} .day.today{background:var(--gold);transform:scale(1.06)}
+.debug{display:flex;gap:6px;flex-wrap:wrap}
+
+/* Toasts + floaters */
+#toasts{position:fixed;left:0;right:0;top:calc(var(--top) + 96px);display:flex;flex-direction:column;align-items:center;gap:6px;z-index:60;pointer-events:none;padding:0 16px}
+.toast{background:var(--paper);border:2.5px solid var(--ink);border-radius:12px;padding:6px 12px;font-weight:900;font-size:14px;box-shadow:0 3px 0 var(--ink);animation:tin .25s ease-out;max-width:100%}
+.toast.good{background:#d9f5cf} .toast.bad{background:var(--danger);color:#fff} .toast.gold{background:var(--gold)}
+@keyframes tin{from{transform:translateY(-12px);opacity:0}}
+.floater{position:fixed;z-index:70;font-family:var(--f-display);font-size:26px;color:var(--gold);-webkit-text-stroke:1.5px var(--ink);pointer-events:none;animation:floatup 1.1s ease-out forwards}
+.floater.neg{color:var(--danger)}
+@keyframes floatup{to{transform:translateY(-60px);opacity:0}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+
+<div id="world"><div id="stage"><img class="bg" id="bg" alt="" draggable="false"><div id="layer"></div></div></div>
+<div class="hud">
+  <div class="money"><span class="pill num" id="cashPill"><span class="coin">$</span><span id="cash">$500</span></span><span class="row" style="gap:4px"><span class="pill sm num" id="supPill" title="Supplies"><span class="coin" style="background:#8fd0ea">⬢</span><span id="sup">0</span></span><span class="pill sm num debt" id="debtPill" hidden>Debt <span id="debt"></span></span></span></div>
+  <span class="spacer"></span>
+  <button class="rbtn" id="dailyBtn" aria-label="Daily reward"><svg width="22" height="22" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="12" rx="2" fill="#ffc84a" stroke="#22170f" stroke-width="2"/><rect x="2" y="6" width="20" height="5" rx="1.5" fill="#5bb05a" stroke="#22170f" stroke-width="2"/><path d="M12 6v15" stroke="#22170f" stroke-width="2"/></svg><span class="dot new" id="dailyDot" hidden></span></button>
+  <button class="rbtn" id="dealsBtn" aria-label="Contracts"><svg width="22" height="22" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2" fill="#fffaf0" stroke="#22170f" stroke-width="2"/><rect x="8" y="2" width="8" height="4" rx="1" fill="#c98a4b" stroke="#22170f" stroke-width="2"/><path d="M8 11h8M8 15h5" stroke="#22170f" stroke-width="2"/></svg><span class="dot" id="dealsDot" hidden></span></button>
+  <button class="rbtn" id="menuBtn" aria-label="Settings"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="#22170f" stroke-width="3" stroke-linecap="round"/></svg></button>
+</div>
+<div class="bottom" id="bottom"></div>
+<div id="modalRoot"></div>
+<div id="toasts" aria-live="polite"></div>
+<script>
+/* =========================================================================
+   GREEN EMPIRE TYCOON — prototype
+   File layout (single page):
+     1. CONFIG        – every tunable number lives here
+     2. State model   – save shape, load/save, offline catch-up
+     3. Systems       – economy, growing, selling, contracts, properties, daily, loan
+     4. Rendering     – scenes (city / grow / shop / stock / deals), modals
+     5. Art helpers   – isometric city SVG, plants, NPCs
+     6. Boot + loop
+   ========================================================================= */
+
+/* ---------- 1. CONFIG ---------- */
+const CONFIG = {
+  startCash: 500,
+  seedCost: 50,
+  baseGrowHours: 4,            // real-time hours at 1x speed
+  basePayout: 120,             // value of one harvest unit at reference THC
+  offlineCapHours: 4,
+  thc: { min: 12, max: 35, ref: 22, payoutPerPoint: 0.03 },   // +3% value per THC point over ref
+  styles: {
+    standard: { label: "Standard",    time: 1.00, pay: 1.00 },
+    fast:     { label: "Fast-growing", time: 0.70, pay: 0.85 },
+    heavy:    { label: "Heavy yield",  time: 1.35, pay: 1.30 },
+  },
+  leans: { indica: "Indica", hybrid: "Hybrid", sativa: "Sativa" },
+  saturation: { threshold: 3, penalty: 0.80 },   // 3+ sales in a row of one strain → −20%
+  pushPrice: { markup: 1.30, acceptChance: 0.55 },
+  prefMatchBonus: 0.10,
+  loyalty: { perSale: 1, bonusPerPoint: 0.004, maxBonus: 0.20 },
+  brandStars: [10, 30, 75, 150, 300],           // lifetime sales needed per star
+  brandBonusPerStar: 0.04,
+  customers: { maxQueue: 6, spawnSeconds: 12, minSpawnSeconds: 5 },  // real seconds
+  growRoom: { slots: 12, startUnlocked: 3, slotCosts: [150, 250, 400, 550, 700, 900, 1100, 1400, 1800], yield: 1 },
+  rooftop: { slots: 4, growHours: 5, yield: 2 },  // big sun plants: slower, double yield, ignores light upgrades
+  upgrades: {
+    leds:    { name: "Budget LEDs",    cost: 200,  growHours: 3, desc: "Grow room cycles drop to 3h." },
+    premium: { name: "Premium lights", cost: 600,  growHours: 2, requires: "leds", desc: "Grow room cycles drop to 2h." },
+    vent:    { name: "Ventilation",    cost: 1000, yieldMult: 2, desc: "Doubles grow room yield." },
+  },
+  products: {
+    flower: { label: "Flower",      mult: 1.0 },
+    edible: { label: "Edibles",     mult: 1.8, flower: 1, supplies: 1, needs: "kitchen" },
+    conc:   { label: "Concentrate", mult: 2.8, flower: 2, supplies: 1, needs: "lab" },
+  },
+  wholesale: { batch: 5, mult: 0.65, needs: "warehouse" },
+  storage: { base: 20, warehouse: 120 },
+  properties: {
+    storefront: { name: "Storefront",      cost: 0,     color: "#c27f43", unlock: "Sell flower to walk-in customers." },
+    kitchen:    { name: "Kitchen",         cost: 800,   color: "#d0628f", unlock: "Cook flower + supplies into edibles (×1.8 value).", req: { contracts: 1, supplies: 2 } },
+    rooftop:    { name: "Rooftop Grow",    cost: 1500,  color: "#4f9e5a", unlock: "Opens the 4 front beds to the open sky: slower, double yield, no lights needed." },
+    lab:        { name: "Extraction Lab",  cost: 3000,  color: "#d9a12b", unlock: "Make concentrates (×2.8) and take premium contracts.", req: { contracts: 3, supplies: 4, props: ["kitchen"] } },
+    warehouse:  { name: "Warehouse",       cost: 5000,  color: "#6b7a99", unlock: "Wholesale batches to other shops + 120 storage.", req: { contracts: 4 } },
+    tower:      { name: "Corporate Tower", cost: 40000, color: "#2fd46a", unlock: "Licensing income for every strain you own, an investor board, +1 brand star.", req: { props: ["kitchen", "rooftop", "lab", "warehouse"] } },
+  },
+  tower: { licensePerStrainPerHour: 40 },
+  loan: { amount: 400, repayMult: 1.5, skim: 0.40 },
+  contracts: { open: 2, rewardMult: 1.6, premiumRewardMult: 2.2 },
+  daily: [
+    { label: "$100",            cash: 100 },
+    { label: "Free seed",       seeds: 1 },
+    { label: "$150",            cash: 150 },
+    { label: "2 supplies",      supplies: 2 },
+    { label: "2 seeds + coupon", seeds: 2, coupon: true },
+    { label: "$300",            cash: 300 },
+    { label: "$500 + 3 supplies", cash: 500, supplies: 3 },
+  ],
+  couponDiscount: 0.20,
+  saveKey: "greenEmpire.save.v1",
+};
+
+/* ---------- 2. STATE ---------- */
+const HOUR = 3600 * 1000;
+let S;              // live state
+let speed = 1;      // debug time multiplier (not saved)
+
+function freshState() {
+  return {
+    v: 1,
+    company: "Green Empire",
+    cash: CONFIG.startCash,
+    debt: 0,
+    supplies: 0,
+    seeds: 0,
+    coupon: false,
+    gameTime: 0,                 // game-clock in ms; growth reads from this
+    lastReal: Date.now(),
+    strains: [],                 // {id,name,thc,lean,style,notes,created}
+    plots: { room: [], roof: [] },// arrays of {strainId, plantedAt, duration, yield} | null
+    roomUnlocked: CONFIG.growRoom.startUnlocked,
+    inv: {},                     // "strainId|product" -> count
+    props: { storefront: true },
+    upgrades: {},
+    streak: { strainId: null, count: 0 },
+    loyalty: 0,
+    lifetimeSales: 0,
+    contractsDone: 0,
+    contracts: [],
+    customers: [],
+    daily: { streak: 0, lastDay: null },
+    licenseAcc: 0,
+    stats: { earned: 0 },
+    seenTowerIntro: false,
+    nextId: 1,
+  };
+}
+
+function load() {
+  let raw = null;
+  try { raw = localStorage.getItem(CONFIG.saveKey); } catch (e) {}
+  if (raw) {
+    try { S = Object.assign(freshState(), JSON.parse(raw)); } catch (e) { S = freshState(); }
+  } else S = freshState();
+  const away = Math.max(0, Math.min(Date.now() - (S.lastReal || Date.now()), CONFIG.offlineCapHours * HOUR));
+  S.customers = S.customers || [];
+  return away;
+}
+function save() {
+  S.lastReal = Date.now();
+  try { localStorage.setItem(CONFIG.saveKey, JSON.stringify(S)); } catch (e) {}
+}
+
+/* ---------- 3. SYSTEMS ---------- */
+const uid = () => "s" + (S.nextId++);
+const money = n => (n < 0 ? "−$" : "$") + Math.round(Math.abs(n)).toLocaleString("en-US");
+const strainById = id => S.strains.find(s => s.id === id);
+const owns = p => !!S.props[p];
+const todayKey = (d = new Date()) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+const dayShift = (key, n) => { const [y, m, d] = key.split("-").map(Number); return todayKey(new Date(y, m - 1, d + n)); };
+
+function strainValue(st) {
+  const t = CONFIG.thc;
+  return CONFIG.basePayout * CONFIG.styles[st.style].pay * (1 + (st.thc - t.ref) * t.payoutPerPoint);
+}
+function unitValue(strainId, product) {
+  const st = strainById(strainId);
+  return st ? strainValue(st) * CONFIG.products[product].mult : 0;
+}
+function brandStars() {
+  let n = CONFIG.brandStars.filter(x => S.lifetimeSales >= x).length;
+  if (owns("tower")) n += 1;
+  return n;
+}
+function loyaltyBonus() { return Math.min(CONFIG.loyalty.maxBonus, S.loyalty * CONFIG.loyalty.bonusPerPoint); }
+function isSaturated(strainId) {
+  return S.streak.strainId === strainId && S.streak.count >= CONFIG.saturation.threshold;
+}
+function retailPrice(strainId, product, customer, push) {
+  let p = unitValue(strainId, product);
+  if (isSaturated(strainId)) p *= CONFIG.saturation.penalty;
+  p *= 1 + loyaltyBonus() + brandStars() * CONFIG.brandBonusPerStar;
+  const st = strainById(strainId);
+  if (customer && customer.wants !== "any" && st && st.lean === customer.wants) p *= 1 + CONFIG.prefMatchBonus;
+  if (push) p *= CONFIG.pushPrice.markup;
+  return Math.round(p);
+}
+
+// Income passes through the investor skim while in debt.
+function earn(amount, x, y) {
+  amount = Math.round(amount);
+  let skim = 0;
+  if (S.debt > 0) { skim = Math.min(S.debt, Math.round(amount * CONFIG.loan.skim)); S.debt -= skim; }
+  S.cash += amount - skim;
+  S.stats.earned += amount;
+  floater("+" + money(amount - skim), x, y);
+  if (skim) toast(`Investor took ${money(skim)}${S.debt <= 0 ? " — loan paid off!" : ""}`, S.debt <= 0 ? "good" : "");
+  return amount - skim;
+}
+function spend(amount, x, y) {
+  if (S.cash < amount) { SFX.play("error"); toast(`Need ${money(amount - S.cash)} more`, "bad"); return false; }
+  S.cash -= amount; floater("−" + money(amount), x, y, true); return true;
+}
+function discounted(cost) { return S.coupon ? Math.round(cost * (1 - CONFIG.couponDiscount)) : cost; }
+function useCoupon() { if (S.coupon) { S.coupon = false; toast("Coupon applied: 20% off", "gold"); } }
+
+/* Inventory */
+const invKey = (id, p) => id + "|" + p;
+const invGet = (id, p) => S.inv[invKey(id, p)] || 0;
+function invAdd(id, p, n) { const k = invKey(id, p); S.inv[k] = (S.inv[k] || 0) + n; if (S.inv[k] <= 0) delete S.inv[k]; }
+const invTotal = () => Object.values(S.inv).reduce((a, b) => a + b, 0);
+const storageCap = () => owns("warehouse") ? CONFIG.storage.warehouse : CONFIG.storage.base;
+function invList() {
+  return Object.entries(S.inv).map(([k, n]) => { const [strainId, product] = k.split("|"); return { strainId, product, n }; })
+    .filter(x => strainById(x.strainId));
+}
+
+/* Growing */
+function growHoursRoom() {
+  if (S.upgrades.premium) return CONFIG.upgrades.premium.growHours;
+  if (S.upgrades.leds) return CONFIG.upgrades.leds.growHours;
+  return CONFIG.baseGrowHours;
+}
+function plotSpec(area, st) {
+  const style = CONFIG.styles[st.style];
+  if (area === "roof") return { duration: CONFIG.rooftop.growHours * style.time * HOUR, yield: CONFIG.rooftop.yield };
+  return { duration: growHoursRoom() * style.time * HOUR, yield: CONFIG.growRoom.yield * (S.upgrades.vent ? CONFIG.upgrades.vent.yieldMult : 1) };
+}
+function plotProgress(pl) { return Math.min(1, (S.gameTime - pl.plantedAt) / pl.duration); }
+function stageOf(pl) {
+  const p = plotProgress(pl);
+  if (p >= 1) return "ready"; if (p >= 0.6) return "flower"; if (p >= 0.25) return "veg"; return "seedling";
+}
+function plant(area, idx, strainId, x, y) {
+  const st = strainById(strainId); if (!st) return;
+  if (S.seeds > 0) { S.seeds--; toast("Used a free seed", "gold"); }
+  else if (!spend(CONFIG.seedCost, x, y)) return;
+  const spec = plotSpec(area, st);
+  S.plots[area][idx] = { strainId, plantedAt: S.gameTime, duration: spec.duration, yield: spec.yield };
+  SFX.play("plant"); save(); render();
+}
+function harvest(area, idx, x, y) {
+  const pl = S.plots[area][idx]; if (!pl || stageOf(pl) !== "ready") return;
+  const room = storageCap() - invTotal();
+  if (room <= 0) { SFX.play("error"); toast("Storage full — sell something first", "bad"); return; }
+  const n = Math.min(pl.yield, room);
+  invAdd(pl.strainId, "flower", n);
+  S.plots[area][idx] = null;
+  SFX.play("harvest");
+  const st = strainById(pl.strainId);
+  floater(`+${n} ${st ? st.name : "jar"}`, x, y);
+  save(); render();
+}
+function harvestAll() {
+  let n = 0;
+  for (const area of ["room", "roof"]) S.plots[area].forEach((pl, i) => { if (pl && stageOf(pl) === "ready" && invTotal() < storageCap()) { harvest(area, i); n++; } });
+  if (n) toast(`Harvested ${n} plot${n > 1 ? "s" : ""}`, "good");
+}
+const readyCount = () => ["room", "roof"].reduce((a, ar) => a + S.plots[ar].filter(p => p && stageOf(p) === "ready").length, 0);
+const growingCount = () => ["room", "roof"].reduce((a, ar) => a + S.plots[ar].filter(p => p).length, 0);
+
+/* Customers */
+const NPC_NAMES = ["Dee", "Marco", "Priya", "Jules", "Tasha", "Ken", "Rosa", "Andre", "Lin", "Omar", "Bea", "Sol", "Nia", "Theo"];
+const NPC_COLORS = ["#2f8f46", "#e07a2f", "#7b5bd6", "#e8d9b5", "#3f6fd1", "#8a5a36", "#c94b6d", "#2aa3a3"];
+let spawnTimer = 0;
+function spawnCustomer() {
+  if (S.customers.length >= CONFIG.customers.maxQueue) return;
+  const r = Math.random();
+  S.customers.push({
+    id: "c" + Math.random().toString(36).slice(2, 8),
+    name: NPC_NAMES[Math.floor(Math.random() * NPC_NAMES.length)],
+    wants: r < 0.3 ? "indica" : r < 0.55 ? "sativa" : r < 0.7 ? "hybrid" : "any",
+    shirt: NPC_COLORS[Math.floor(Math.random() * NPC_COLORS.length)],
+    pants: ["#2b2f3a", "#c9b38a", "#4b5a3a", "#3a3f6b"][Math.floor(Math.random() * 4)],
+    skin: ["#f1c7a1", "#c68b5e", "#8d5a3b", "#5b3a29", "#e9b48a"][Math.floor(Math.random() * 5)],
+    hat: Math.random() < 0.5,
+    edibleFan: Math.random() < 0.35,
+  });
+}
+function spawnInterval() {
+  return Math.max(CONFIG.customers.minSpawnSeconds, CONFIG.customers.spawnSeconds * (1 - loyaltyBonus() * 2 - brandStars() * 0.05));
+}
+function sellTo(customerId, strainId, product, push, x, y) {
+  const c = S.customers.find(c => c.id === customerId); if (!c) return;
+  if (invGet(strainId, product) <= 0) return;
+  if (push && Math.random() > CONFIG.pushPrice.acceptChance) {
+    S.customers = S.customers.filter(z => z.id !== customerId);
+    SFX.play("error"); toast(`${c.name} walked out — too pricey`, "bad"); closeModal(); save(); render(); return;
+  }
+  const price = retailPrice(strainId, product, c, push);
+  invAdd(strainId, product, -1);
+  if (S.streak.strainId === strainId) S.streak.count++; else S.streak = { strainId, count: 1 };
+  S.loyalty += CONFIG.loyalty.perSale;
+  S.lifetimeSales++;
+  S.customers = S.customers.filter(z => z.id !== customerId);
+  earn(price, x, y);
+  SFX.play("sale");
+  if (isSaturated(strainId) && S.streak.count === CONFIG.saturation.threshold) toast(`${strainById(strainId).name} is saturating — switch strains`, "bad");
+  closeModal(); save(); render();
+}
+function sellWholesale(strainId, product, x, y) {
+  const n = Math.min(CONFIG.wholesale.batch, invGet(strainId, product)); if (n <= 0) return;
+  const total = unitValue(strainId, product) * CONFIG.wholesale.mult * n;
+  invAdd(strainId, product, -n);
+  S.lifetimeSales += n;
+  earn(total, x, y); SFX.play("sale"); save(); render();
+}
+
+/* Processing */
+function process(strainId, product, x, y) {
+  const P = CONFIG.products[product];
+  if (!owns(P.needs)) return;
+  if (invGet(strainId, "flower") < P.flower) { toast(`Need ${P.flower} flower`, "bad"); SFX.play("error"); return; }
+  if (S.supplies < P.supplies) { toast("Need supplies — complete contracts", "bad"); SFX.play("error"); return; }
+  invAdd(strainId, "flower", -P.flower); S.supplies -= P.supplies; invAdd(strainId, product, 1);
+  SFX.play("plant"); floater(`+1 ${P.label}`, x, y); save(); render();
+}
+
+/* Contracts */
+const CLIENTS = ["Corner Café Co-op", "Midtown Wellness", "Uptown Supper Club", "Harbor Bar & Lounge", "Night Owl Records", "Ironworks Gym", "Glasshouse Hotel", "Pier 9 Collective"];
+function newContract(premium) {
+  const prof = {};
+  if (Math.random() < 0.7) prof.lean = ["indica", "sativa", "hybrid"][Math.floor(Math.random() * 3)];
+  if (Math.random() < 0.6) prof.minThc = [18, 22, 25, 28][Math.floor(Math.random() * (premium ? 4 : 3))];
+  if (Math.random() < 0.45) prof.style = Math.random() < 0.5 ? "fast" : "heavy";
+  if (!prof.lean && !prof.minThc && !prof.style) prof.lean = "hybrid";
+  const product = premium ? "conc" : "flower";
+  const qty = premium ? 1 + Math.floor(Math.random() * 2) : 1 + Math.floor(Math.random() * 3);
+  const refVal = CONFIG.basePayout * CONFIG.products[product].mult * (1 + ((prof.minThc || 22) - 22) * CONFIG.thc.payoutPerPoint);
+  return {
+    id: "k" + Math.random().toString(36).slice(2, 8),
+    client: CLIENTS[Math.floor(Math.random() * CLIENTS.length)],
+    prof, product, qty, premium: !!premium,
+    cash: Math.round(refVal * qty * (premium ? CONFIG.contracts.premiumRewardMult : CONFIG.contracts.rewardMult) / 10) * 10,
+    supplies: premium ? 3 : 1 + Math.floor(Math.random() * 2),
+  };
+}
+function profileText(prof) {
+  const bits = [];
+  if (prof.minThc) bits.push(`${prof.minThc}%+ THC`);
+  if (prof.lean) bits.push(prof.lean === "hybrid" ? "balanced hybrid" : `${prof.lean}-leaning`);
+  if (prof.style) bits.push(prof.style === "fast" ? "fast-growing" : "heavy-yield");
+  return bits.join(", ");
+}
+function strainMatches(st, prof) {
+  return (!prof.lean || st.lean === prof.lean) && (!prof.minThc || st.thc >= prof.minThc) && (!prof.style || st.style === prof.style);
+}
+function ensureContracts() {
+  const want = CONFIG.contracts.open + (owns("lab") ? 1 : 0);
+  while (S.contracts.filter(c => !c.premium).length < CONFIG.contracts.open) S.contracts.push(newContract(false));
+  if (owns("lab") && !S.contracts.some(c => c.premium)) S.contracts.push(newContract(true));
+  S.contracts = S.contracts.slice(0, want + 1);
+}
+function deliver(cid, strainId, x, y) {
+  const k = S.contracts.find(c => c.id === cid); if (!k) return;
+  const st = strainById(strainId);
+  if (!st || !strainMatches(st, k.prof) || invGet(strainId, k.product) < k.qty) return;
+  invAdd(strainId, k.product, -k.qty);
+  S.contracts = S.contracts.filter(c => c.id !== cid);
+  S.contractsDone++; S.supplies += k.supplies; S.lifetimeSales += k.qty;
+  earn(k.cash, x, y); SFX.play("sale");
+  toast(`Contract done! +${k.supplies} supplies`, "good");
+  ensureContracts(); closeModal(); save(); render();
+}
+function rerollContract(cid) {
+  if (!spend(25)) return;
+  const k = S.contracts.find(c => c.id === cid);
+  S.contracts = S.contracts.map(c => c.id === cid ? newContract(k.premium) : c);
+  save(); render();
+}
+
+/* Properties & upgrades */
+function propLocks(key) {
+  const P = CONFIG.properties[key], req = P.req || {}, out = [];
+  if (req.contracts && S.contractsDone < req.contracts) out.push(`${req.contracts} contracts done (${S.contractsDone}/${req.contracts})`);
+  if (req.supplies && S.supplies < req.supplies) out.push(`${req.supplies} supplies (${S.supplies}/${req.supplies})`);
+  (req.props || []).forEach(p => { if (!owns(p)) out.push(`Own ${CONFIG.properties[p].name}`); });
+  return out;
+}
+function buyProperty(key, x, y) {
+  const P = CONFIG.properties[key];
+  if (owns(key) || propLocks(key).length) return;
+  const cost = discounted(P.cost);
+  if (!spend(cost, x, y)) return;
+  useCoupon();
+  if (P.req && P.req.supplies) S.supplies -= P.req.supplies;
+  S.props[key] = true;
+  if (key === "rooftop") S.plots.roof = new Array(CONFIG.rooftop.slots).fill(null);
+  if (key === "lab") ensureContracts();
+  SFX.play("buy");
+  closeModal(); save(); render();
+  if (key === "tower") towerCelebration();
+  else toast(`${P.name} unlocked! ${P.unlock}`, "good");
+}
+function buyUpgrade(key, x, y) {
+  const U = CONFIG.upgrades[key];
+  if (S.upgrades[key] || (U.requires && !S.upgrades[U.requires])) return;
+  if (!spend(discounted(U.cost), x, y)) return;
+  useCoupon();
+  S.upgrades[key] = true; SFX.play("buy");
+  toast(`${U.name} installed — applies to new plantings`, "good"); save(); render();
+}
+function buySlot(x, y) {
+  const i = S.roomUnlocked - CONFIG.growRoom.startUnlocked;
+  const cost = CONFIG.growRoom.slotCosts[i]; if (cost == null) return;
+  if (!spend(cost, x, y)) return;
+  S.roomUnlocked++; SFX.play("buy"); save(); render();
+}
+
+/* Daily reward */
+function dailyAvailable() { return S.daily.lastDay !== todayKey(); }
+function nextStreakDay() {
+  const t = todayKey();
+  if (S.daily.lastDay === dayShift(t, -1)) return (S.daily.streak % 7) + 1;
+  return 1;
+}
+function claimDaily() {
+  if (!dailyAvailable()) return;
+  const d = nextStreakDay(), R = CONFIG.daily[d - 1];
+  S.daily = { streak: d, lastDay: todayKey() };
+  if (R.cash) earn(R.cash, innerWidth - 60, 70);
+  if (R.seeds) S.seeds += R.seeds;
+  if (R.supplies) S.supplies += R.supplies;
+  if (R.coupon) S.coupon = true;
+  SFX.play("harvest"); toast(`Day ${d} reward: ${R.label}`, "gold");
+  closeModal(); save(); render();
+}
+
+/* Loan (soft failure) */
+function isBroke() {
+  const cheapest = S.seeds > 0 ? 0 : CONFIG.seedCost;
+  return S.cash < cheapest && growingCount() === 0 && invTotal() === 0 && S.debt === 0;
+}
+function takeLoan() {
+  S.cash += CONFIG.loan.amount; S.debt += Math.round(CONFIG.loan.amount * CONFIG.loan.repayMult);
+  SFX.play("buy"); toast(`Took ${money(CONFIG.loan.amount)}. You owe ${money(S.debt)}.`, "bad");
+  closeModal(); save(); render();
+}
+
+/* Time advance (shared by live tick + offline catch-up) */
+function advance(dtGame) {
+  S.gameTime += dtGame;
+  if (owns("tower")) {
+    S.licenseAcc += CONFIG.tower.licensePerStrainPerHour * S.strains.length * (dtGame / HOUR);
+    if (S.licenseAcc >= 1) { const n = Math.floor(S.licenseAcc); S.licenseAcc -= n; S.cash += n; S.stats.earned += n; }
+  }
+}
+/* ---------- 4. SCENES (your art is the screen) ----------
+   Each scene is one of the supplied illustrations, drawn full-bleed and pannable.
+   All coordinates below are pixels in that image's own space, so swapping in a
+   re-rendered image only means updating these numbers. */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let scene = "city", modalOpen = null;
+
+const SCENES = {
+  city:      { img: "assets/city.webp",      w: 1168, h: 784,  focus: [640, 430], name: "" },
+  grow:      { img: "assets/grow.webp",      w: 1168, h: 784,  focus: [625, 430], name: "Grow Room" },
+  shop:      { img: "assets/shop.webp",      w: 1168, h: 784,  focus: [560, 420], name: "Dispensary" },
+  kitchen:   { img: "assets/kitchen.webp",   w: 997,  h: 667,  room: true, name: "Kitchen" },
+  lab:       { img: "assets/lab.webp",       w: 1129, h: 763,  room: true, name: "Lab" },
+  warehouse: { img: "assets/warehouse.webp", w: 1080, h: 780,  room: true, name: "Warehouse" },
+  hq:        { img: "assets/tower.webp",     w: 721,  h: 1062, room: true, tall: true, name: "Downtown HQ" },
+};
+/* City: tap zones [x0,y0,x1,y1] and label anchor, in city-image pixels */
+const CITY = {
+  shop:      { rect: [430, 360, 850, 700], pin: [575, 336], prop: "storefront", label: "Dispensary" },
+  grow:      { rect: [450, 10, 870, 300],  pin: [545, 128],  label: "Grow Room" },
+  lab:       { rect: [150, 40, 432, 500],  pin: [292, 205], prop: "lab", label: "Lab" },
+  kitchen:   { rect: [0, 0, 280, 320],     pin: [130, 200], prop: "kitchen", label: "Kitchen" },
+  warehouse: { rect: [905, 0, 1168, 330],  pin: [1036, 200], prop: "warehouse", label: "Warehouse" },
+  hq:        { rect: [930, 600, 1168, 784], pin: [1040, 640], prop: "tower", label: "Downtown HQ" },
+};
+/* Grow room: centres of the 16 soil beds (row j from the back, column i left→right along the row) */
+const BEDS = [
+  [[583, 293], [667, 340], [750, 388], [833, 435]],
+  [[493, 339], [576, 390], [660, 440], [743, 491]],
+  [[403, 385], [486, 439], [570, 493], [653, 547]],
+  [[312, 431], [396, 488], [479, 546], [563, 603]],
+];
+/* Back three rows = indoor beds (12), front row = rooftop/open-air beds (4) */
+const bedFor = (area, idx) => area === "room" ? BEDS[Math.floor(idx / 4)][idx % 4] : BEDS[3][idx];
+const bedRow = (area, idx) => area === "room" ? Math.floor(idx / 4) : 3;
+const PLANT_W = { seedling: 58, veg: 72, flower: 86, ready: 100 };
+const PLANT_IMG = { seedling: "assets/plant0.webp", veg: "assets/plant1.webp", flower: "assets/plant2.webp", ready: "assets/plant3.webp" };
+/* Storefront: the six people in line (head-top points); customer i speaks from person i */
+const LINE = [[128, 236], [255, 258], [420, 252], [572, 296], [755, 288], [893, 330]];
+/* Interior action spots (cut-out image pixels) */
+const ROOM_ACT = {
+  kitchen:   { at: [508, 372], label: "Cook edibles", sub: "1 flower + 1 supply", act: "cook" },
+  lab:       { at: [270, 236], label: "Extract", sub: "2 flower + 1 supply", act: "extract" },
+  warehouse: { at: [300, 400], label: "Ship wholesale", sub: `batches of ${CONFIG.wholesale.batch}`, act: "wholesale" },
+};
+
+function fmtDur(ms) {
+  if (ms <= 0) return "ready";
+  const m = Math.ceil(ms / 60000);
+  if (m < 60) return m + "m";
+  const h = Math.floor(m / 60), r = m % 60;
+  return r ? `${h}h ${r}m` : `${h}h`;
+}
+const pills = st => `<span class="tagp ${st.lean}">${CONFIG.leans[st.lean]}</span> <span class="tagp">${st.thc}% THC</span>${st.style !== "standard" ? ` <span class="tagp ${st.style}">${CONFIG.styles[st.style].label}</span>` : ""}`;
+const productName = p => CONFIG.products[p].label;
+function jarHTML(name, product) {
+  const cls = product === "edible" ? "edible" : product === "conc" ? "conc" : "";
+  return `<div class="pkg ${cls}"><div class="lid"></div><div class="body"><div class="lbl">${esc(name)}</div></div></div>`;
+}
+
+/* ---- stage sizing + zoom ---- */
+let stageScale = 1, stageW = 0, stageH = 0, stageX = 0, stageY = 0, zoom = 1;
+function baseScale() {
+  const sc = SCENES[scene], W = $("#world"), vw = W.clientWidth, vh = W.clientHeight;
+  if (!sc.room) return Math.max(vw / sc.w, vh / sc.h);
+  const fit = Math.min((vw - 24) / sc.w, (vh - 190) / sc.h);
+  return sc.tall ? fit : Math.max(fit, Math.min((vh * .44) / sc.h, 1));
+}
+function zoomLimits() {
+  const sc = SCENES[scene], W = $("#world"), b = baseScale();
+  const min = Math.min(1, Math.min((W.clientWidth - 16) / sc.w, (W.clientHeight - 150) / sc.h) / b);
+  return [min, 2.2];
+}
+/* anchor: [screenX, screenY] that should keep pointing at the same image spot; null = scene focus */
+function layoutStage(anchor) {
+  const sc = SCENES[scene], W = $("#world"), vw = W.clientWidth, vh = W.clientHeight;
+  let ix, iy, ax = vw / 2, ay = vh / 2;
+  if (anchor && stageW) { ax = anchor[0]; ay = anchor[1]; ix = (W.scrollLeft + ax - stageX) / stageScale; iy = (W.scrollTop + ay - stageY) / stageScale; }
+  else { const f = sc.focus || [sc.w / 2, sc.h / 2]; ix = f[0]; iy = f[1]; if (sc.room) { const A = ROOM_ACT[scene]; if (A) ix = A.at[0] + 140; } }
+  stageScale = baseScale() * zoom;
+  stageW = sc.w * stageScale; stageH = sc.h * stageScale;
+  const padTop = sc.room ? 84 : 0, padBot = sc.room ? 90 : 0;
+  stageX = Math.max(sc.room ? 12 : 0, (vw - stageW) / 2);
+  stageY = Math.max(padTop, (vh - stageH) / 2 + (sc.room ? 10 : 0));
+  const st = $("#stage");
+  st.style.width = stageW + "px"; st.style.height = stageH + "px"; st.style.left = stageX + "px"; st.style.top = stageY + "px";
+  st.style.marginRight = (stageW + 2 * stageX > vw ? 12 : 0) + "px"; st.style.marginBottom = (stageH + stageY > vh ? padBot : 0) + "px";
+  W.scrollLeft = Math.max(0, stageX + ix * stageScale - ax);
+  W.scrollTop = Math.max(0, stageY + iy * stageScale - ay);
+}
+function setZoom(z, ax, ay) {
+  const [mn, mx] = zoomLimits();
+  z = Math.max(mn, Math.min(mx, z)); if (Math.abs(z - zoom) < .001) return;
+  zoom = z; layoutStage([ax, ay]); render();
+}
+const pctX = x => (x / SCENES[scene].w * 100).toFixed(3) + "%";
+const pctY = y => (y / SCENES[scene].h * 100).toFixed(3) + "%";
+const px = v => (v * stageScale).toFixed(1) + "px";
+
+function goScene(name) {
+  scene = name; closeModal();
+  const sc = SCENES[name], W = $("#world");
+  W.className = sc.room ? "room" : "";
+  $("#bg").src = sc.img; zoom = 1; stageW = 0;
+  layoutStage(null);
+  render();
+}
+
+/* ---- HUD ---- */
+function renderHUD() {
+  $("#cash").textContent = money(S.cash);
+  $("#sup").textContent = S.supplies;
+  $("#debtPill").hidden = S.debt <= 0; $("#debt").textContent = money(S.debt);
+  $("#dailyDot").hidden = !dailyAvailable();
+  const can = S.contracts.filter(k => S.strains.some(st => strainMatches(st, k.prof) && invGet(st.id, k.product) >= k.qty)).length;
+  $("#dealsDot").hidden = !can; $("#dealsDot").textContent = can;
+}
+function renderBottom() {
+  const b = $("#bottom"), sc = SCENES[scene];
+  let h = "";
+  if (scene !== "city") h += `<button class="fab" data-act="street"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="#22170f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>Street</button>`;
+  if (scene === "grow" && readyCount()) h += `<button class="fab go" data-act="harvestAll">Harvest all (${readyCount()})</button>`;
+  if (scene === "shop") h += `<button class="fab" data-act="shelves">Shelves · ${invTotal()}</button>`;
+  if (sc.name) h += `<span class="where">${sc.name}</span>`;
+  if (b.innerHTML !== h) b.innerHTML = h;
+}
+
+function render() {
+  renderHUD(); renderBottom();
+  ({ city: layerCity, grow: layerGrow, shop: layerShop, kitchen: layerRoom, lab: layerRoom, warehouse: layerRoom, hq: layerHQ })[scene]();
+}
+
+function pin(x, y, cls, icon, title, sub, act, data, badge) {
+  return `<button class="pin ${cls}" style="left:${pctX(x)};top:${pctY(y)}" data-act="${act}" ${data}><span class="tag"><span class="ic">${icon}</span><span><b>${title}</b>${sub ? `<small>${sub}</small>` : ""}</span>${badge ? `<span class="badge">${badge}</span>` : ""}</span><span class="stem"></span></button>`;
+}
+const hit = (r, act, data, label) => `<button class="hit" aria-label="${label}" style="left:${pctX(r[0])};top:${pctY(r[1])};width:${pctX(r[2] - r[0])};height:${pctY(r[3] - r[1])}" data-act="${act}" ${data}></button>`;
+const LEAF_IC = `<svg width="14" height="14" viewBox="0 0 24 24"><path d="M12 21V11M12 13c-2-3-6-4-8-3 1 3 5 4 8 3zM12 13c2-3 6-4 8-3-1 3-5 4-8 3zM12 11c-2-3-1.5-6 0-9 1.5 3 2 6 0 9z" fill="currentColor"/></svg>`;
+const LOCK_IC = `<svg width="12" height="12" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" fill="#fff"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="#fff" stroke-width="3"/></svg>`;
+
+/* ---- City ---- */
+function layerCity() {
+  let h = "";
+  for (const [key, Z] of Object.entries(CITY)) {
+    const own = !Z.prop || owns(Z.prop);
+    const locks = Z.prop ? propLocks(Z.prop) : [];
+    let cls = "", sub = "", icon = LEAF_IC, badge = "";
+    if (!own) {
+      if (locks.length) { cls = "lock"; sub = "Locked"; icon = LOCK_IC; }
+      else { cls = "sale"; sub = "For sale · " + money(discounted(CONFIG.properties[Z.prop].cost)); icon = "$"; }
+    } else if (key === "shop") { sub = S.customers.length ? `${S.customers.length} waiting` : "Open"; badge = S.customers.length || ""; cls = S.customers.length ? "bob" : ""; }
+    else if (key === "grow") { const rc = readyCount(); sub = rc ? `${rc} ready to harvest` : `${growingCount()} growing`; badge = rc || ""; cls = rc ? "bob" : ""; }
+    else if (key === "hq") sub = "Your tower";
+    else sub = "Owned";
+    h += hit(Z.rect, "enter", `data-s="${key}"`, Z.label) + pin(Z.pin[0], Z.pin[1], cls, icon, Z.label, sub, "enter", `data-s="${key}"`, badge);
+  }
+  $("#layer").innerHTML = h;
+}
+function enter(key) {
+  const Z = CITY[key];
+  if (Z && Z.prop && !owns(Z.prop)) { propModal(Z.prop); return; }
+  goScene(key);
+}
+
+/* ---- Grow room ---- */
+function layerGrow() {
+  for (const a of ["room", "roof"]) {
+    const n = a === "room" ? CONFIG.growRoom.slots : CONFIG.rooftop.slots;
+    if (S.plots[a].length < n) S.plots[a] = S.plots[a].concat(new Array(n - S.plots[a].length).fill(null));
+  }
+  let plants = [], ui = "";
+  const nextSlot = S.roomUnlocked < CONFIG.growRoom.slots ? CONFIG.growRoom.slotCosts[S.roomUnlocked - CONFIG.growRoom.startUnlocked] : null;
+  const cells = [];
+  for (let i = 0; i < CONFIG.growRoom.slots; i++) cells.push(["room", i]);
+  for (let i = 0; i < CONFIG.rooftop.slots; i++) cells.push(["roof", i]);
+  for (const [area, idx] of cells) {
+    const [x, y] = bedFor(area, idx), row = bedRow(area, idx), k = .86 + row * .06;
+    const locked = area === "room" ? idx >= S.roomUnlocked : !owns("rooftop");
+    if (locked) {
+      if (area === "room" && idx === S.roomUnlocked && nextSlot != null) {
+        ui += `<button class="cell" data-act="slot" aria-label="Open this bed" style="left:${pctX(x)};top:${pctY(y)};width:${px(78)};height:${px(52)}"></button><span class="chip gold" style="left:${pctX(x)};top:${pctY(y - 8)}">+ ${money(nextSlot)}</span>`;
+      }
+      continue;
+    }
+    const pl = S.plots[area][idx];
+    ui += `<button class="cell" data-act="plot" data-a="${area}" data-i="${idx}" aria-label="Bed ${idx + 1}" style="left:${pctX(x)};top:${pctY(y - 26)};width:${px(80)};height:${px(100)}"></button>`;
+    if (!pl) { ui += `<span class="plus" style="left:${pctX(x)};top:${pctY(y)}">+</span>`; continue; }
+    const st = strainById(pl.strainId), stage = stageOf(pl), p = plotProgress(pl);
+    plants.push({ y, h: `<img class="plant ${stage === "ready" ? "ready" : ""}" src="${PLANT_IMG[stage]}" alt="" style="left:${pctX(x)};top:${pctY(y + 16)};width:${px(PLANT_W[stage] * k)}">` });
+    ui += stage === "ready"
+      ? `<span class="chip gold" style="left:${pctX(x)};top:${pctY(y + 14)}">Harvest</span>`
+      : `<span class="chip" style="left:${pctX(x)};top:${pctY(y + 14)}">${fmtDur(pl.duration * (1 - p))}<i><b style="width:${(p * 100).toFixed(0)}%"></b></i></span>`;
+  }
+  if (!owns("rooftop")) {
+    ui += pin(440, 690, propLocks("rooftop").length ? "lock" : "sale", "$", "Rooftop beds", propLocks("rooftop").length ? "Locked" : "Open to sky · " + money(discounted(CONFIG.properties.rooftop.cost)), "prop", `data-k="rooftop"`);
+  }
+  ui += pin(470, 150, "", "💡", "Lights & fans", growHoursRoom() + "h cycles", "upgrades", "");
+  plants.sort((a, b) => a.y - b.y);
+  $("#layer").innerHTML = plants.map(p => p.h).join("") + ui;
+}
+
+/* ---- Dispensary storefront ---- */
+function layerShop() {
+  let h = "";
+  S.customers.slice(0, LINE.length).forEach((c, i) => {
+    const [x, y] = LINE[i];
+    h += hit([x - 75, y - 10, x + 75, y + 400], "cust", `data-c="${c.id}"`, c.name);
+    h += `<button class="bubble ${c.wants === "any" ? "" : c.wants}" data-act="cust" data-c="${c.id}" style="left:${pctX(x)};top:${pctY(y - 14)}"><b>${esc(c.name)}</b>${c.wants === "any" ? "Anything good" : "Wants " + c.wants}${c.edibleFan ? " · edibles" : ""}</button>`;
+  });
+  h += hit([880, 190, 1090, 450], "shelves", "", "Shelves");
+  if (!S.customers.length) h += `<span class="bubble" style="left:${pctX(700)};top:${pctY(150)}">Quiet right now…</span>`;
+  $("#layer").innerHTML = h;
+}
+
+/* ---- Interiors ---- */
+function layerRoom() {
+  const A = ROOM_ACT[scene];
+  $("#layer").innerHTML = pin(A.at[0], A.at[1], "action bob", "▶", A.label, A.sub, A.act, "");
+}
+function layerHQ() {
+  const owned = owns("tower");
+  let h = "";
+  if (owned) {
+    const perHr = CONFIG.tower.licensePerStrainPerHour * S.strains.length;
+    h += pin(360, 120, "action", "★", `${S.company} HQ`, `Licensing ${money(perHr)}/hr`, "hqInfo", "");
+  } else {
+    const locks = propLocks("tower");
+    h += pin(360, 120, locks.length ? "lock" : "sale", locks.length ? LOCK_IC : "$", "Corporate Tower", locks.length ? "Locked" : "For sale · " + money(discounted(CONFIG.properties.tower.cost)), "prop", `data-k="tower"`);
+  }
+  $("#layer").innerHTML = h;
+  $("#bg").style.filter = owned ? "" : "grayscale(.55) brightness(.92)";
+}
+
+/* ---- Sheets ---- */
+function openModal(html, name) {
+  modalOpen = name || "modal";
+  $("#modalRoot").innerHTML = `<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
+}
+function closeModal() { modalOpen = null; $("#modalRoot").innerHTML = ""; if (scene !== "hq") $("#bg").style.filter = ""; }
+
+const NAME_A = ["Midnight", "Neon", "Brick City", "Rooftop", "Velvet", "Concrete", "Lucky", "Golden", "Harbor", "Uptown", "Static", "Copper"];
+const NAME_B = ["Kush", "Haze", "Dream", "Diesel", "Cookies", "Glue", "Runtz", "Breath", "Sherbet", "Fuel", "Cake", "Zkittle"];
+const suggestName = () => NAME_A[Math.floor(Math.random() * NAME_A.length)] + " " + NAME_B[Math.floor(Math.random() * NAME_B.length)];
+
+let draft = null;
+function strainModal(prefill) {
+  draft = Object.assign({ name: "", thc: 22, lean: "hybrid", style: "standard", notes: "" }, prefill || {});
+  openModal(`<h2>Create a strain</h2><p class="sub">Your name goes on every jar. Higher THC sells for more.</p><div id="strainForm"></div>`, "strain");
+  drawStrainForm();
+}
+function drawStrainForm() {
+  const d = draft, val = strainValue({ thc: d.thc, style: d.style }), hrs = growHoursRoom() * CONFIG.styles[d.style].time;
+  const seg = (field, opts) => `<div class="seg">${Object.entries(opts).map(([k, v]) => `<button type="button" data-act="seg" data-f="${field}" data-v="${k}" aria-pressed="${d[field] === k}">${typeof v === "string" ? v : v.label}</button>`).join("")}</div>`;
+  const dup = S.strains.some(s => s.name.trim().toLowerCase() === d.name.trim().toLowerCase());
+  $("#strainForm").innerHTML = `
+    <div class="preview">${jarHTML(d.name || "Your strain", "flower")}<dl><dt>Value</dt><dd class="num" style="color:var(--gold-dk)">${money(val)} / harvest</dd><dt>Grow</dt><dd>${fmtDur(hrs * HOUR)} indoors</dd><dt>Profile</dt><dd>${d.thc}% · ${CONFIG.leans[d.lean]}</dd></dl></div>
+    <div class="field"><label class="label" for="sName">Strain name</label><div class="row" style="flex-wrap:nowrap"><input type="text" id="sName" maxlength="24" value="${esc(d.name)}" placeholder="e.g. Brick City Haze"><button type="button" class="btn sm ghost" data-act="suggest">Suggest</button></div>${dup ? `<small style="color:var(--danger)">You already have a strain with this name.</small>` : ""}</div>
+    <div class="field"><label class="label" for="sThc">THC: ${d.thc}%</label><input type="range" id="sThc" min="${CONFIG.thc.min}" max="${CONFIG.thc.max}" value="${d.thc}"></div>
+    <div class="field"><span class="label">Lean</span>${seg("lean", CONFIG.leans)}</div>
+    <div class="field"><span class="label">Growth style</span>${seg("style", CONFIG.styles)}</div>
+    <div class="field"><label class="label" for="sNotes">Notes (optional)</label><textarea id="sNotes" maxlength="80" placeholder="Citrus nose, couch-lock finish">${esc(d.notes)}</textarea></div>
+    <div class="row"><button class="btn ghost" data-act="close">Cancel</button><button class="btn go" data-act="saveStrain" style="flex:1" ${!d.name.trim() || dup ? "disabled" : ""}>Create strain</button></div>`;
+  const nm = $("#sName"); nm.addEventListener("input", () => { draft.name = nm.value; const pos = nm.selectionStart; drawStrainForm(); const n2 = $("#sName"); n2.focus(); n2.setSelectionRange(pos, pos); });
+  const th = $("#sThc"); th.addEventListener("input", () => { draft.thc = +th.value; drawStrainForm(); $("#sThc").focus(); });
+  $("#sNotes").addEventListener("input", e => draft.notes = e.target.value);
+}
+function saveStrain() {
+  const d = draft; if (!d.name.trim()) return;
+  const st = { id: uid(), name: d.name.trim(), thc: d.thc, lean: d.lean, style: d.style, notes: d.notes.trim(), created: S.gameTime };
+  S.strains.push(st);
+  if (S.streak.count >= CONFIG.saturation.threshold) S.streak = { strainId: null, count: 0 };
+  SFX.play("buy"); toast(`${st.name} added to your catalog`, "good");
+  closeModal(); save(); render();
+  if (pendingPlot) { const p = pendingPlot; pendingPlot = null; plantModal(p.area, p.idx); }
+}
+let pendingPlot = null;
+function plantModal(area, idx) {
+  if (!S.strains.length) { pendingPlot = { area, idx }; strainModal(); return; }
+  const rows = S.strains.map(st => {
+    const spec = plotSpec(area, st);
+    return `<div class="strain"><div class="meta"><b>${esc(st.name)}</b><small>${pills(st)}</small><small style="display:block">${fmtDur(spec.duration)} · ×${spec.yield} · ${money(strainValue(st) * spec.yield)}</small></div><button class="btn sm go" data-act="doPlant" data-a="${area}" data-i="${idx}" data-s="${st.id}">Plant</button></div>`;
+  }).join("");
+  openModal(`<h2>${area === "roof" ? "Plant a rooftop bed" : "Plant a seed"}</h2><p class="sub">${S.seeds ? `Uses 1 of your ${S.seeds} free seeds.` : `Costs ${money(CONFIG.seedCost)}. You have ${money(S.cash)}.`}</p><div class="stack">${rows}</div><div class="row" style="margin-top:12px"><button class="btn ghost" data-act="close">Cancel</button><button class="btn" data-act="newStrainFor" data-a="${area}" data-i="${idx}">+ New strain</button></div>`, "plant");
+}
+function customerModal(cid) {
+  const c = S.customers.find(z => z.id === cid); if (!c) return;
+  const rows = invList().map(it => {
+    const st = strainById(it.strainId), price = retailPrice(it.strainId, it.product, c, false), push = retailPrice(it.strainId, it.product, c, true);
+    const match = c.wants !== "any" && st.lean === c.wants;
+    return `<div class="strain"><div class="meta"><b>${esc(st.name)} · ${productName(it.product)}</b><small>×${it.n}${match ? ` · <span class="tagp ${st.lean}">wanted</span>` : ""}${isSaturated(it.strainId) ? ` <span class="tagp sat">saturated</span>` : ""}${c.edibleFan && it.product === "edible" ? ` <span class="tagp">fan favourite</span>` : ""}</small></div>
+      <div class="stack" style="gap:4px"><button class="btn sm go" data-act="sell" data-c="${cid}" data-s="${it.strainId}" data-p="${it.product}">${money(price)}</button><button class="btn sm ghost" data-act="push" data-c="${cid}" data-s="${it.strainId}" data-p="${it.product}">Push ${money(push)}</button></div></div>`;
+  }).join("");
+  openModal(`<h2>${esc(c.name)}</h2><p class="sub">Looking for ${c.wants === "any" ? "whatever's good" : `something ${c.wants}`}. Pushing the price works ${Math.round(CONFIG.pushPrice.acceptChance * 100)}% of the time.</p>
+    <div class="stack">${rows || `<div class="panel">Nothing on the shelves. Harvest in the Grow Room first.</div>`}</div>
+    <div class="row" style="margin-top:12px"><button class="btn ghost" data-act="close">Not now</button><button class="btn warn" data-act="dismiss" data-c="${cid}">Send away</button></div>`, "cust");
+}
+function shelvesModal() {
+  const list = invList().sort((a, b) => a.strainId.localeCompare(b.strainId) || a.product.localeCompare(b.product));
+  const jars = list.map(it => { const st = strainById(it.strainId); return `<div class="jar">${jarHTML(st.name, it.product)}<span class="count num">×${it.n}</span><b>${esc(st.name)}</b><small>${productName(it.product)} · ${money(unitValue(it.strainId, it.product))}</small></div>`; }).join("");
+  const strains = S.strains.map(st => `<div class="strain"><div class="meta"><b>${esc(st.name)}</b><small>${pills(st)}</small></div><div class="num" style="color:var(--gold-dk)">${money(strainValue(st))}</div></div>`).join("");
+  openModal(`<h2>Shelves</h2><p class="sub">${invTotal()}/${storageCap()} jars · tap a customer outside to sell.</p>
+    ${jars ? `<div class="jars">${jars}</div>` : `<div class="panel">Empty. Harvest in the Grow Room to stock jars.</div>`}
+    <div class="row" style="justify-content:space-between;margin:14px 0 6px"><span class="label">Your strains (${S.strains.length})</span><button class="btn sm go" data-act="newStrain">+ New strain</button></div>
+    <div class="stack">${strains || `<div class="panel">No strains yet.</div>`}</div>
+    <div class="row" style="margin-top:12px"><button class="btn ghost block" data-act="close">Close</button></div>`, "shelves");
+}
+function processModal(product) {
+  const P = CONFIG.products[product];
+  const fl = invList().filter(it => it.product === "flower");
+  const rows = fl.map(it => { const st = strainById(it.strainId); return `<div class="strain"><div class="meta"><b>${esc(st.name)}</b><small>${it.n} flower · makes ${money(unitValue(it.strainId, product))} ${P.label.toLowerCase()}</small></div><button class="btn sm go" data-act="proc" data-s="${it.strainId}" data-p="${product}" ${it.n < P.flower || S.supplies < P.supplies ? "disabled" : ""}>${product === "edible" ? "Cook" : "Extract"}</button></div>`; }).join("");
+  openModal(`<h2>${product === "edible" ? "Cook edibles" : "Extract concentrate"}</h2><p class="sub">Each batch uses ${P.flower} flower + ${P.supplies} supply. You have ${S.supplies} supplies. Contracts pay supplies.</p>
+    <div class="stack">${rows || `<div class="panel">No flower in stock. Harvest first.</div>`}</div><div class="row" style="margin-top:12px"><button class="btn ghost block" data-act="close">Done</button></div>`, product);
+}
+function wholesaleModal() {
+  const rows = invList().map(it => { const st = strainById(it.strainId), n = Math.min(CONFIG.wholesale.batch, it.n); return `<div class="strain"><div class="meta"><b>${esc(st.name)} · ${productName(it.product)}</b><small>${it.n} in stock</small></div><button class="btn sm cash" data-act="whole" data-s="${it.strainId}" data-p="${it.product}">Ship ${n} · ${money(unitValue(it.strainId, it.product) * CONFIG.wholesale.mult * n)}</button></div>`; }).join("");
+  openModal(`<h2>Ship wholesale</h2><p class="sub">Other shops buy in batches of ${CONFIG.wholesale.batch} at ${CONFIG.wholesale.mult * 100}% of retail. No customers needed, and it doesn't saturate.</p><div class="stack">${rows || `<div class="panel">Nothing to ship.</div>`}</div><div class="row" style="margin-top:12px"><button class="btn ghost block" data-act="close">Done</button></div>`, "wholesale");
+}
+function upgradesModal() {
+  const ups = Object.entries(CONFIG.upgrades).map(([k, U]) => {
+    const have = S.upgrades[k], blocked = U.requires && !S.upgrades[U.requires];
+    return `<div class="strain"><div class="meta"><b>${U.name}</b><small>${U.desc}</small></div>${have ? `<span class="tagp hybrid">Installed</span>` : `<button class="btn sm cash" data-act="upg" data-k="${k}" ${blocked ? "disabled" : ""}>${blocked ? "Needs LEDs" : money(discounted(U.cost))}</button>`}</div>`;
+  }).join("");
+  openModal(`<h2>Lights & fans</h2><p class="sub">Indoor beds grow in ${growHoursRoom()}h. Upgrades apply to new plantings.</p><div class="stack">${ups}</div><div class="row" style="margin-top:12px"><button class="btn ghost block" data-act="close">Close</button></div>`, "upgrades");
+}
+function contractsModal() {
+  ensureContracts();
+  const cards = S.contracts.map(k => {
+    const ready = S.strains.filter(st => strainMatches(st, k.prof) && invGet(st.id, k.product) >= k.qty);
+    const anyMatch = S.strains.some(st => strainMatches(st, k.prof));
+    return `<div class="contract"><div class="row" style="justify-content:space-between"><h3>${esc(k.client)}</h3>${k.premium ? `<span class="tagp" style="background:#e0a52b">Premium</span>` : ""}</div>
+      <p>Wants <b>${k.qty} ${productName(k.product).toLowerCase()}</b> of a <b>${profileText(k.prof)}</b> strain.</p>
+      <div class="reward">Pays ${money(k.cash)} + ${k.supplies} supplies</div>
+      <div class="row" style="margin-top:8px">${ready.length ? `<button class="btn go sm" data-act="deliver" data-k="${k.id}">Deliver</button>` : anyMatch ? `<span style="font-size:12px">You have a matching strain. Grow ${k.qty}${k.product === "conc" ? " and extract" : ""}.</span>` : `<button class="btn sm" data-act="matchStrain" data-k="${k.id}">Create matching strain</button>`}
+        <button class="btn ghost sm" data-act="reroll" data-k="${k.id}" style="margin-left:auto">New client $25</button></div></div>`;
+  }).join("");
+  openModal(`<h2>Contracts</h2><p class="sub">${S.contractsDone} completed. Clients ask for a profile, not a name.</p><div class="stack">${cards}</div><div class="row" style="margin-top:12px"><button class="btn ghost block" data-act="close">Close</button></div>`, "deals");
+}
+function deliverModal(kid) {
+  const k = S.contracts.find(c => c.id === kid); if (!k) return;
+  const ok = S.strains.filter(st => strainMatches(st, k.prof) && invGet(st.id, k.product) >= k.qty);
+  openModal(`<h2>${esc(k.client)}</h2><p class="sub">Deliver ${k.qty} ${productName(k.product).toLowerCase()} · ${profileText(k.prof)}</p>
+    <div class="stack">${ok.map(st => `<div class="strain"><div class="meta"><b>${esc(st.name)}</b><small>${pills(st)} · ${invGet(st.id, k.product)} in stock</small></div><button class="btn sm go" data-act="doDeliver" data-k="${kid}" data-s="${st.id}">Deliver</button></div>`).join("")}</div>
+    <div class="row" style="margin-top:12px"><button class="btn ghost" data-act="contracts">Back</button></div>`, "deliver");
+}
+const PROP_ART = { storefront: "assets/shop.webp", kitchen: "assets/kitchen.webp", rooftop: "assets/grow.webp", lab: "assets/lab.webp", warehouse: "assets/warehouse.webp", tower: "assets/tower.webp" };
+const PROP_SCENE = { storefront: "shop", kitchen: "kitchen", rooftop: "grow", lab: "lab", warehouse: "warehouse", tower: "hq" };
+function propModal(key) {
+  const P = CONFIG.properties[key], o = owns(key), locks = propLocks(key), cost = discounted(P.cost);
+  openModal(`<div class="art"><img src="${PROP_ART[key]}" alt=""></div><h2>${P.name}</h2><p class="sub">${P.unlock}</p>
+    ${o ? "" : `${locks.length ? `<div class="panel"><div class="label">To unlock</div><ul style="margin:6px 0 0;padding-left:18px">${locks.map(l => `<li>${l}</li>`).join("")}</ul></div>` : ""}
+      ${P.req && P.req.supplies ? `<p class="sub" style="margin-top:8px">Uses ${P.req.supplies} supplies on purchase.</p>` : ""}`}
+    <div class="row" style="margin-top:12px"><button class="btn ghost" data-act="close">Close</button>${o ? `<button class="btn go" style="flex:1" data-act="go" data-s="${PROP_SCENE[key]}">Go inside</button>` : `<button class="btn cash" style="flex:1" data-act="buyProp" data-k="${key}" ${locks.length ? "disabled" : ""}>Buy for ${money(cost)}${S.coupon ? " (coupon)" : ""}</button>`}</div>`, "prop");
+}
+function dailyModal() {
+  const avail = dailyAvailable(), next = avail ? nextStreakDay() : S.daily.streak;
+  const days = CONFIG.daily.map((R, i) => { const d = i + 1, done = avail ? d < next : d <= next, today = avail && d === next; return `<div class="day ${done ? "done" : ""} ${today ? "today" : ""}"><b>${d}</b>${R.label}</div>`; }).join("");
+  openModal(`<h2>Daily rewards</h2><p class="sub">Come back each day to climb the streak. Miss a day and it restarts at Day 1.</p><div class="days">${days}</div>
+    <div class="row"><button class="btn ghost" data-act="close">Close</button>${avail ? `<button class="btn go" style="flex:1" data-act="claim">Claim Day ${next}</button>` : `<span class="sub" style="margin:0">Come back tomorrow for Day ${(S.daily.streak % 7) + 1}.</span>`}</div>`, "daily");
+}
+let confirmReset = false;
+function menuModal() {
+  openModal(`<h2>Settings</h2>
+    <div class="field"><label class="label" for="coName">Company name</label><input type="text" id="coName" maxlength="22" value="${esc(S.company)}"></div>
+    <div class="field"><span class="label">Sound</span><div class="row"><button class="btn sm ${SFX.on ? "go" : "ghost"}" data-act="sfx">Effects ${SFX.on ? "on" : "off"}</button><button class="btn sm ${SFX.ambientOn ? "go" : "ghost"}" data-act="ambient">City ambience ${SFX.ambientOn ? "on" : "off"}</button></div></div>
+    <div class="field"><span class="label">Debug · time speed (now ${speed}×)</span><div class="debug">${[1, 60, 600, 3600].map(x => `<button class="btn sm ${speed === x ? "go" : "ghost"}" data-act="speed" data-x="${x}">${x}×</button>`).join("")}<button class="btn sm" data-act="skip">+1 hour</button><button class="btn sm" data-act="nextDay">Next day</button><button class="btn sm cash" data-act="cheat">+$1,000</button></div></div>
+    <div class="field"><span class="label">Stats</span><p class="sub" style="margin:0">Lifetime sales ${S.lifetimeSales} · Earned ${money(S.stats.earned)} · Contracts ${S.contractsDone} · Strains ${S.strains.length} · Brand ${"★".repeat(brandStars()) || "unrated"}</p></div>
+    <div class="row"><button class="btn go" data-act="close" style="flex:1">Done</button>${confirmReset ? `<button class="btn warn" data-act="resetYes">Erase save?</button><button class="btn ghost" data-act="resetNo">Keep</button>` : `<button class="btn warn" data-act="reset">Reset game</button>`}</div>`, "menu");
+  $("#coName").addEventListener("input", e => { S.company = e.target.value.trim() || "Green Empire"; save(); });
+}
+function investorModal() {
+  openModal(`<h2>The Investor</h2><p class="sub">A guy in a nice suit is waiting by the door. "Cash is tight? Take ${money(CONFIG.loan.amount)} today. I'll take ${CONFIG.loan.skim * 100}% of every sale until you've paid back ${money(CONFIG.loan.amount * CONFIG.loan.repayMult)}."</p>
+    <div class="row"><button class="btn ghost" data-act="close">Walk away</button><button class="btn warn" style="flex:1" data-act="loan">Take the money</button></div>`, "investor");
+}
+const BOARD = ["Margins look healthy. Keep the strain list fresh.", "Licensing is the business now. Name more strains.", "Our uptown partners want something heavier. Think indica.", "Don't let one strain carry the brand. Diversify.", "The city knows your name. Let's keep it that way."];
+const boardQuote = () => BOARD[Math.floor(S.gameTime / (2 * HOUR)) % BOARD.length];
+function hqModal() {
+  const perHr = CONFIG.tower.licensePerStrainPerHour * S.strains.length;
+  openModal(`<h2>${esc(S.company)} HQ</h2><p class="sub">Licensing ${S.strains.length} strain${S.strains.length === 1 ? "" : "s"} across the city: <b style="color:var(--leaf-dk)">${money(perHr)}/hr</b>. Every new strain adds ${money(CONFIG.tower.licensePerStrainPerHour)}/hr, even while you're away.</p>
+    <div class="panel"><div class="label">From the board</div><p style="margin:4px 0 0">“${esc(boardQuote())}”</p></div>
+    <div class="row" style="margin-top:12px"><button class="btn go block" data-act="close">Back to work</button></div>`, "hqInfo");
+}
+function towerCelebration() {
+  goScene("hq");
+  openModal(`<h2 style="color:var(--leaf-dk)">You made it.</h2>
+    <p class="sub">${esc(S.company)} owns a tower downtown. Your strains are licensed to shops across the city and the board meets on the top floor. Your brand gains a star.</p>
+    <p class="sub">Licensing pays ${money(CONFIG.tower.licensePerStrainPerHour)}/hr for every strain you own. The city's still open for business.</p>
+    <button class="btn go block" data-act="close">Back to work</button>`, "tower");
+  SFX.play("buy"); setTimeout(() => SFX.play("sale"), 300);
+}
+
+/* Toasts + floaters */
+function toast(msg, kind) {
+  const t = document.createElement("div"); t.className = "toast " + (kind || ""); t.textContent = msg;
+  $("#toasts").appendChild(t); setTimeout(() => t.remove(), 2600);
+  while ($("#toasts").children.length > 2) $("#toasts").firstChild.remove();
+}
+function floater(text, x, y, neg) {
+  const f = document.createElement("div"); f.className = "floater" + (neg ? " neg" : ""); f.textContent = text;
+  f.style.left = Math.max(10, Math.min(innerWidth - 140, (x ?? innerWidth / 2) - 30)) + "px";
+  f.style.top = ((y ?? innerHeight / 3) - 20) + "px";
+  document.body.appendChild(f); setTimeout(() => f.remove(), 1150);
+}
+/* ---------- Sound hooks (WebAudio placeholders) ---------- */
+const SFX = {
+  ctx: null, on: true, ambientOn: false, amb: null,
+  init() { if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (this.ctx && this.ctx.state === "suspended") this.ctx.resume(); },
+  tone(f, dur, type = "sine", g = .12, delay = 0) {
+    const c = this.ctx; if (!c) return; const t = c.currentTime + delay;
+    const o = c.createOscillator(), v = c.createGain(); o.type = type; o.frequency.value = f;
+    v.gain.setValueAtTime(0, t); v.gain.linearRampToValueAtTime(g, t + .01); v.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(v).connect(c.destination); o.start(t); o.stop(t + dur + .05);
+  },
+  play(name) {
+    if (!this.on || !this.ctx) return;
+    if (name === "sale") { this.tone(1318, .08, "square", .06); this.tone(1760, .25, "square", .06, .08); this.tone(2637, .3, "sine", .05, .08); }       // cha-ching
+    else if (name === "harvest") { this.tone(880, .5, "sine", .1); this.tone(1320, .6, "sine", .07, .09); }                                                // soft chime
+    else if (name === "plant") { this.tone(196, .12, "triangle", .15); this.tone(294, .1, "triangle", .1, .05); }
+    else if (name === "buy") { [523, 659, 784, 1047].forEach((f, i) => this.tone(f, .2, "triangle", .1, i * .07)); }
+    else if (name === "error") { this.tone(140, .18, "sawtooth", .07); }
+  },
+  setAmbient(on) {                                                                                                                                           // ambient city loop
+    this.ambientOn = on; if (!this.ctx) this.init(); const c = this.ctx; if (!c) return;
+    if (on && !this.amb) {
+      const buf = c.createBuffer(1, c.sampleRate * 2, c.sampleRate), d = buf.getChannelData(0); let last = 0;
+      for (let i = 0; i < d.length; i++) { last = (last + .02 * (Math.random() * 2 - 1)) / 1.02; d[i] = last * 3.5; }
+      const src = c.createBufferSource(); src.buffer = buf; src.loop = true;
+      const lp = c.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 500; const g = c.createGain(); g.gain.value = .35;
+      src.connect(lp).connect(g).connect(c.destination); src.start(); this.amb = src;
+    } else if (!on && this.amb) { this.amb.stop(); this.amb = null; }
+  },
+};
+try { const p = JSON.parse(localStorage.getItem("greenEmpire.sound") || "{}"); if (p.on === false) SFX.on = false; } catch (e) {}
+const saveSound = () => { try { localStorage.setItem("greenEmpire.sound", JSON.stringify({ on: SFX.on })); } catch (e) {} };
+
+/* ---------- 6. INPUT, LOOP, BOOT ---------- */
+document.addEventListener("pointerdown", () => SFX.init(), { passive: true });
+
+/* Mouse drag-to-pan (touch already pans natively) */
+let drag = null, dragMoved = false;
+const W0 = $("#world");
+W0.addEventListener("pointerdown", e => { if (e.pointerType !== "mouse") return; drag = { x: e.clientX, y: e.clientY, sl: W0.scrollLeft, st: W0.scrollTop }; dragMoved = false; });
+addEventListener("pointermove", e => { if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 6) dragMoved = true; W0.scrollLeft = drag.sl - dx; W0.scrollTop = drag.st - dy; });
+addEventListener("pointerup", () => { drag = null; });
+
+document.addEventListener("click", e => {
+  if (dragMoved) { dragMoved = false; e.stopPropagation(); return; }
+  const el = e.target.closest("[data-act]"); if (!el) return;
+  const a = el.dataset.act, x = e.clientX, y = e.clientY, ds = el.dataset;
+  if (a === "scrim") { if (e.target === el) closeModal(); return; }
+  switch (a) {
+    case "close": closeModal(); break;
+    case "enter": enter(ds.s); break;
+    case "go": goScene(ds.s); break;
+    case "street": goScene("city"); break;
+    case "prop": propModal(ds.k); break;
+    case "buyProp": { const k = ds.k; buyProperty(k, x, y); if (owns(k) && k !== "tower") goScene(PROP_SCENE[k]); break; }
+    case "upgrades": upgradesModal(); break;
+    case "upg": buyUpgrade(ds.k, x, y); upgradesModal(); break;
+    case "slot": buySlot(x, y); break;
+    case "plot": { const pl = S.plots[ds.a][+ds.i]; if (!pl) plantModal(ds.a, +ds.i); else if (stageOf(pl) === "ready") harvest(ds.a, +ds.i, x, y); else toast(`${strainById(pl.strainId)?.name || "Plant"}: ${stageOf(pl)}, ${fmtDur(pl.duration * (1 - plotProgress(pl)))} left`); break; }
+    case "doPlant": closeModal(); plant(ds.a, +ds.i, ds.s, x, y); break;
+    case "harvestAll": harvestAll(); break;
+    case "newStrain": strainModal(); break;
+    case "newStrainFor": pendingPlot = { area: ds.a, idx: +ds.i }; strainModal(); break;
+    case "matchStrain": { const k = S.contracts.find(c => c.id === ds.k); if (k) strainModal({ lean: k.prof.lean || "hybrid", thc: Math.max(22, k.prof.minThc || 22), style: k.prof.style || "standard", name: suggestName() }); break; }
+    case "seg": draft[ds.f] = ds.v; drawStrainForm(); break;
+    case "suggest": draft.name = suggestName(); drawStrainForm(); break;
+    case "saveStrain": saveStrain(); break;
+    case "cust": customerModal(ds.c); break;
+    case "sell": sellTo(ds.c, ds.s, ds.p, false, x, y); break;
+    case "push": sellTo(ds.c, ds.s, ds.p, true, x, y); break;
+    case "dismiss": S.customers = S.customers.filter(c => c.id !== ds.c); closeModal(); save(); render(); break;
+    case "shelves": shelvesModal(); break;
+    case "cook": processModal("edible"); break;
+    case "extract": processModal("conc"); break;
+    case "proc": process(ds.s, ds.p, x, y); processModal(ds.p); break;
+    case "wholesale": wholesaleModal(); break;
+    case "whole": sellWholesale(ds.s, ds.p, x, y); wholesaleModal(); break;
+    case "contracts": contractsModal(); break;
+    case "deliver": deliverModal(ds.k); break;
+    case "doDeliver": deliver(ds.k, ds.s, x, y); break;
+    case "reroll": rerollContract(ds.k); contractsModal(); break;
+    case "hqInfo": hqModal(); break;
+    case "claim": claimDaily(); break;
+    case "investor": investorModal(); break;
+    case "loan": takeLoan(); break;
+    case "sfx": SFX.on = !SFX.on; saveSound(); menuModal(); break;
+    case "ambient": SFX.setAmbient(!SFX.ambientOn); menuModal(); break;
+    case "speed": speed = +ds.x; toast(`Time speed ${speed}×`); menuModal(); break;
+    case "skip": advance(HOUR); toast("Skipped 1 hour"); save(); render(); break;
+    case "nextDay": if (S.daily.lastDay) S.daily.lastDay = dayShift(S.daily.lastDay, -1); toast("Pretended a day passed"); save(); closeModal(); render(); break;
+    case "cheat": S.cash += 1000; save(); render(); menuModal(); break;
+    case "reset": confirmReset = true; menuModal(); break;
+    case "resetNo": confirmReset = false; menuModal(); break;
+    case "resetYes": confirmReset = false; S = freshState(); ensureContracts(); save(); closeModal(); goScene("city"); welcome(); break;
+    case "welcomeGo": closeModal(); goScene("grow"); strainModal({ name: "" }); break;
+  }
+}, true);
+$("#dailyBtn").addEventListener("click", dailyModal);
+$("#dealsBtn").addEventListener("click", contractsModal);
+$("#menuBtn").addEventListener("click", menuModal);
+addEventListener("resize", () => { const W = $("#world"); layoutStage([W.clientWidth / 2, W.clientHeight / 2]); render(); });
+/* Pinch (touch) and ctrl/trackpad-pinch wheel zoom */
+let pinch = null;
+const tdist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+W0.addEventListener("touchstart", e => { if (e.touches.length === 2) pinch = { d: tdist(e.touches), z: zoom }; }, { passive: true });
+W0.addEventListener("touchmove", e => {
+  if (!pinch || e.touches.length !== 2) return;
+  e.preventDefault();
+  const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2, my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+  setZoom(pinch.z * tdist(e.touches) / pinch.d, mx, my);
+}, { passive: false });
+W0.addEventListener("touchend", e => { if (e.touches.length < 2) pinch = null; }, { passive: true });
+W0.addEventListener("wheel", e => { if (!e.ctrlKey && !e.metaKey) return; e.preventDefault(); setZoom(zoom * Math.exp(-e.deltaY * .01), e.clientX, e.clientY); }, { passive: false });
+
+function welcome() {
+  openModal(`<div class="art"><img src="assets/city.webp" alt=""></div><h2>Welcome to the block</h2>
+    <p class="sub">You've got ${money(CONFIG.startCash)}, a corner dispensary and a grow room on the roof. The goal is a tower downtown with your strains in every shop in the city.</p>
+    <p class="sub">Name a strain, plant it in the Grow Room, then sell the harvest to the line outside your door. Drag to look around the block and tap any building.</p>
+    <button class="btn go block" data-act="welcomeGo">Name my first strain</button>`, "welcome");
+}
+
+let lastT = performance.now(), redraw = 0, saveTimer = 0, prevReady = 0, prevCust = 0, investorNagged = false;
+function tick() {
+  const now = performance.now(), dt = Math.min(1000, now - lastT); lastT = now;
+  advance(dt * speed);
+  spawnTimer += dt / 1000;
+  if (spawnTimer >= spawnInterval() && S.customers.length < CONFIG.customers.maxQueue) { spawnTimer = 0; spawnCustomer(); }
+  const rc = readyCount();
+  if (rc > prevReady) { SFX.play("harvest"); toast(`${rc} plant${rc > 1 ? "s" : ""} ready to harvest`, "good"); }
+  redraw += dt;
+  if (redraw > 1000 || rc !== prevReady || S.customers.length !== prevCust) { redraw = 0; if (modalOpen !== "cust" || scene !== "shop") render(); else renderHUD(); }
+  prevReady = rc; prevCust = S.customers.length;
+  saveTimer += dt; if (saveTimer > 5000) { saveTimer = 0; save(); }
+  if (isBroke() && !investorNagged && !modalOpen) { investorNagged = true; investorModal(); }
+  renderHUD();
+}
+
+function start() {
+  const away = load();
+  const readyBefore = S.strains.length ? readyCount() : 0;
+  advance(away);
+  ensureContracts();
+  if (!S.customers.length) { spawnCustomer(); spawnCustomer(); }
+  prevReady = readyCount(); prevCust = S.customers.length;
+  goScene("city");
+  if (!S.strains.length && S.stats.earned === 0) welcome();
+  else if (away > 60000) {
+    const fresh = prevReady - readyBefore;
+    toast(`Welcome back. ${fmtDur(away)} of growing caught up${fresh > 0 ? `, ${fresh} ready` : ""}`, "good");
+  }
+  if (dailyAvailable() && S.strains.length) setTimeout(() => { if (!modalOpen) dailyModal(); }, 600);
+  setInterval(tick, 250);
+  addEventListener("visibilitychange", () => { if (document.hidden) save(); });
+  addEventListener("pagehide", save);
+}
+window.claude?.hot?.snapshot?.(() => { save(); return {}; });
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start();
+</script>
+</body></html>
